@@ -24,7 +24,8 @@ import {
   Plus,
   Trash2,
   ArrowRight,
-  ChevronDown
+  ChevronDown,
+  Info
 } from 'lucide-react';
 
 const App = () => {
@@ -108,12 +109,15 @@ const App = () => {
     }, 200);
   };
 
-  // 状态检查判定核心函数
+  // 状态检查判定核心函数（修复时间格式 + 空值保护）
   const checkStatus = (member, dayDate, itemTime) => {
+    if (!member || !dayDate || !itemTime) return 'not_arrived'; // 空值保护
     const arrival = new Date(member.arrival);
     const departure = new Date(member.departure);
-    // 构造当前项目的具体时间点
-    const checkTime = new Date(`${dayDate}T${itemTime}:00`);
+    // 统一处理时间格式，确保是 HH:mm
+    const normalizedTime = itemTime.split(':').length === 3 ? itemTime.slice(0, 5) : itemTime;
+    const checkTime = new Date(`${dayDate}T${normalizedTime}:00`);
+    if (isNaN(checkTime.getTime())) return 'not_arrived'; // 无效时间兜底
     if (checkTime < arrival) return 'not_arrived';
     if (checkTime > departure) return 'departed';
     return 'present';
@@ -126,6 +130,7 @@ const App = () => {
   };
 
   const saveItineraryItem = () => {
+    if (!itineraryModal) return; // 空值保护
     const newItinerary = [...itinerary];
     if (itineraryModal.mode === 'add') {
       newItinerary[itineraryModal.dayIdx].items.push({ id: Math.random().toString(36), ...itineraryModal.data });
@@ -137,12 +142,14 @@ const App = () => {
   };
 
   const saveMemberData = () => {
+    if (!memberModal) return; // 空值保护
     const newMembers = members.map(m => m.id === memberModal.memberId ? { ...m, ...memberModal.data } : m);
     setMembers(newMembers);
     setMemberModal(null);
   };
 
-  const currentMember = members.find(m => m.id === activeMemberId);
+  // 核心修复：currentMember 空值兜底（避免访问 undefined 属性）
+  const currentMember = members.find(m => m.id === activeMemberId) || members[0];
   const filteredMembers = members.filter(m => visibleMemberIds.includes(m.id));
 
   const fontStyle = {
@@ -153,6 +160,7 @@ const App = () => {
   const formatDateTime = (isoString) => {
     if (!isoString) return '--';
     const date = new Date(isoString);
+    if (isNaN(date.getTime())) return '--'; // 无效时间兜底
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, '0');
     const d = String(date.getDate()).padStart(2, '0');
@@ -233,6 +241,9 @@ const App = () => {
               <input type="text" placeholder="地点" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold" value={itineraryModal.data.loc} onChange={(e)=>setItineraryModal({...itineraryModal, data: {...itineraryModal.data, loc: e.target.value}})} />
               <textarea placeholder="描述" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold resize-none h-20" value={itineraryModal.data.desc} onChange={(e)=>setItineraryModal({...itineraryModal, data: {...itineraryModal.data, desc: e.target.value}})} />
               <button onClick={saveItineraryItem} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-sm shadow-xl active:scale-95 transition-all">保存</button>
+              <button onClick={()=>setItineraryModal(null)} className="absolute top-6 right-6 text-slate-400">
+                <X size={20} />
+              </button>
             </div>
           </div>
         </div>
@@ -259,116 +270,127 @@ const App = () => {
 
       <main className={`max-w-7xl mx-auto px-4 mt-8 transition-all duration-300 transform ${isTransitioning ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}`}>
         
+        {/* 个人看板（增加空值保护，避免空白） */}
         {viewMode === 'individual' ? (
-          <div className="max-w-2xl mx-auto space-y-6">
-            {/* 增强型个人资料卡 */}
-            <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 flex flex-col gap-8">
-              <div className="flex flex-col md:flex-row gap-8 items-start md:items-center justify-between">
-                <div className="flex items-center gap-6">
-                  <div className={`w-20 h-20 rounded-[1.8rem] ${currentMember.bg} text-white flex items-center justify-center text-4xl font-black shadow-2xl shadow-${currentMember.bg.split('-')[1]}-200`}>
-                    {currentMember.name.charAt(0)}
+          currentMember ? (
+            <div className="max-w-2xl mx-auto space-y-6">
+              {/* 增强型个人资料卡 */}
+              <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 flex flex-col gap-8">
+                <div className="flex flex-col md:flex-row gap-8 items-start md:items-center justify-between">
+                  <div className="flex items-center gap-6">
+                    <div 
+                      className={`w-20 h-20 rounded-[1.8rem] ${currentMember.bg} text-white flex items-center justify-center text-4xl font-black`}
+                      style={{ boxShadow: `0 0 25px ${currentMember.color}33` }} // 修复动态阴影
+                    >
+                      {currentMember.name.charAt(0)}
+                    </div>
+                    <div>
+                      <h2 className="text-3xl font-black text-slate-900 tracking-tight">{currentMember.name}</h2>
+                      <div className="flex flex-wrap items-center gap-2 mt-2">
+                        <span className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest bg-slate-100 text-slate-500`}>团体成员</span>
+                        <button onClick={()=>setMemberModal({memberId: currentMember.id, data: {...currentMember}})} className="flex items-center gap-1.5 text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg text-[10px] font-black hover:bg-indigo-600 hover:text-white transition-all">
+                          <Edit3 size={12} /> 修改资料 / 到离时间
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-3xl font-black text-slate-900 tracking-tight">{currentMember.name}</h2>
-                    <div className="flex flex-wrap items-center gap-2 mt-2">
-                      <span className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest bg-slate-100 text-slate-500`}>团体成员</span>
-                      <button onClick={()=>setMemberModal({memberId: currentMember.id, data: {...currentMember}})} className="flex items-center gap-1.5 text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg text-[10px] font-black hover:bg-indigo-600 hover:text-white transition-all">
-                        <Edit3 size={12} /> 修改资料 / 到离时间
+                  
+                  {/* 时间与航班详情 */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full md:w-auto grow max-w-md">
+                    <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                      <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 mb-2 uppercase"><Plane size={14}/> 航班信息</div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex flex-col"><span className="text-[9px] text-slate-400">去程</span><span className="text-sm font-black text-slate-800">{currentMember.arrFlight}</span></div>
+                        <ArrowRight size={14} className="text-slate-300 mx-2" />
+                        <div className="flex flex-col"><span className="text-[9px] text-slate-400">返程</span><span className="text-sm font-black text-slate-800">{currentMember.depFlight}</span></div>
+                      </div>
+                    </div>
+                    <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                      <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 mb-2 uppercase"><Clock size={14}/> 逗留区间</div>
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[10px] font-bold"><span className="text-slate-400">抵达:</span><span className="text-slate-700">{formatDateTime(currentMember.arrival)}</span></div>
+                        <div className="flex justify-between text-[10px] font-bold"><span className="text-slate-400">离开:</span><span className="text-rose-500">{formatDateTime(currentMember.departure)}</span></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 成员快速切换 */}
+                <div className="pt-6 border-t border-slate-100 grid grid-cols-4 md:grid-cols-8 gap-2">
+                  {members.map(m => (
+                    <button key={m.id} onClick={() => handleMemberChange(m.id)} className={`h-11 rounded-2xl transition-all border-2 flex items-center justify-center ${activeMemberId === m.id ? `border-${m.bg.split('-')[1]}-500 bg-white shadow-lg` : 'border-transparent bg-slate-50 opacity-40 hover:opacity-100'}`}>
+                      <span className={`text-[11px] font-black ${activeMemberId === m.id ? m.text : 'text-slate-400'}`}>{m.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 详细行程列表 */}
+              <div className="space-y-12 mt-12">
+                {sortedItinerary.map((day, dIdx) => (
+                  <div key={day.day}>
+                    <div className="flex items-center gap-4 mb-6 sticky top-20 z-10 bg-[#fcfdfe]/90 backdrop-blur-md py-3">
+                      <div className="flex flex-col">
+                        <span className="text-4xl font-black text-slate-900 leading-none">{day.day}</span>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">{day.date}</span>
+                      </div>
+                      <div className="h-0.5 bg-slate-100 grow" />
+                      <button onClick={()=>setItineraryModal({mode:'add', dayIdx:dIdx, data:{time:'12:00', type:'food', title:'', desc:'', loc:''}})} className="bg-emerald-50 text-emerald-600 px-4 py-2 rounded-2xl text-[10px] font-black flex items-center gap-1.5 hover:bg-emerald-600 hover:text-white transition-all shadow-sm">
+                        <Plus size={14} /> 增加行程点
                       </button>
                     </div>
-                  </div>
-                </div>
-                
-                {/* 时间与航班详情 */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full md:w-auto grow max-w-md">
-                  <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
-                    <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 mb-2 uppercase"><Plane size={14}/> 航班信息</div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex flex-col"><span className="text-[9px] text-slate-400">去程</span><span className="text-sm font-black text-slate-800">{currentMember.arrFlight}</span></div>
-                      <ArrowRight size={14} className="text-slate-300 mx-2" />
-                      <div className="flex flex-col"><span className="text-[9px] text-slate-400">返程</span><span className="text-sm font-black text-slate-800">{currentMember.depFlight}</span></div>
-                    </div>
-                  </div>
-                  <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
-                    <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 mb-2 uppercase"><Clock size={14}/> 逗留区间</div>
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-[10px] font-bold"><span className="text-slate-400">抵达:</span><span className="text-slate-700">{formatDateTime(currentMember.arrival)}</span></div>
-                      <div className="flex justify-between text-[10px] font-bold"><span className="text-slate-400">离开:</span><span className="text-rose-500">{formatDateTime(currentMember.departure)}</span></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 成员快速切换 */}
-              <div className="pt-6 border-t border-slate-100 grid grid-cols-4 md:grid-cols-8 gap-2">
-                {members.map(m => (
-                  <button key={m.id} onClick={() => handleMemberChange(m.id)} className={`h-11 rounded-2xl transition-all border-2 flex items-center justify-center ${activeMemberId === m.id ? `border-${m.bg.split('-')[1]}-500 bg-white shadow-lg` : 'border-transparent bg-slate-50 opacity-40 hover:opacity-100'}`}>
-                    <span className={`text-[11px] font-black ${activeMemberId === m.id ? m.text : 'text-slate-400'}`}>{m.name}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 详细行程列表 */}
-            <div className="space-y-12 mt-12">
-              {sortedItinerary.map((day, dIdx) => (
-                <div key={day.day}>
-                  <div className="flex items-center gap-4 mb-6 sticky top-20 z-10 bg-[#fcfdfe]/90 backdrop-blur-md py-3">
-                    <div className="flex flex-col">
-                      <span className="text-4xl font-black text-slate-900 leading-none">{day.day}</span>
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">{day.date}</span>
-                    </div>
-                    <div className="h-0.5 bg-slate-100 grow" />
-                    <button onClick={()=>setItineraryModal({mode:'add', dayIdx:dIdx, data:{time:'12:00', type:'food', title:'', desc:'', loc:''}})} className="bg-emerald-50 text-emerald-600 px-4 py-2 rounded-2xl text-[10px] font-black flex items-center gap-1.5 hover:bg-emerald-600 hover:text-white transition-all shadow-sm">
-                      <Plus size={14} /> 增加行程点
-                    </button>
-                  </div>
-                  <div className="space-y-4">
-                    {day.items.map((item, iIdx) => {
-                      const status = checkStatus(currentMember, day.date, item.time);
-                      const isPresent = status === 'present';
-                      return (
-                        <div key={item.id} className={`group p-6 rounded-[2.5rem] border-2 transition-all duration-300 relative ${!isPresent ? 'bg-slate-50 border-transparent opacity-30 grayscale' : 'bg-white border-slate-100 shadow-sm hover:border-indigo-100 hover:shadow-2xl hover:shadow-indigo-50/50'}`}>
-                          <div className="flex items-start gap-6">
-                            <div className="flex flex-col items-center gap-2 shrink-0">
-                              <div className={`w-14 h-14 rounded-[1.2rem] flex items-center justify-center shadow-lg ${
-                                !isPresent ? 'bg-slate-200 text-slate-400' : 
-                                item.type === 'food' ? 'bg-orange-500 text-white' : 
-                                item.type === 'hotel' ? 'bg-indigo-600 text-white' : 'bg-slate-900 text-white'
-                              }`}>
-                                {item.type === 'food' ? <Utensils size={24}/> : item.type === 'hotel' ? <Hotel size={24}/> : <Camera size={24}/>}
-                              </div>
-                              <span className={`text-[11px] font-black tracking-tighter ${isPresent ? 'text-slate-500' : 'text-slate-300'}`}>{item.time}</span>
-                            </div>
-                            <div className="grow">
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <h4 className={`text-lg font-black tracking-tight ${isPresent ? 'text-slate-900' : 'text-slate-500'}`}>{item.title}</h4>
-                                  <p className={`text-[11px] mt-1.5 font-medium leading-relaxed ${isPresent ? 'text-slate-500' : 'text-slate-400'}`}>{item.desc}</p>
+                    <div className="space-y-4">
+                      {day.items.map((item, iIdx) => {
+                        const status = checkStatus(currentMember, day.date, item.time);
+                        const isPresent = status === 'present';
+                        return (
+                          <div key={item.id} className={`group p-6 rounded-[2.5rem] border-2 transition-all duration-300 relative ${!isPresent ? 'bg-slate-50 border-transparent opacity-30 grayscale' : 'bg-white border-slate-100 shadow-sm hover:border-indigo-100 hover:shadow-2xl hover:shadow-indigo-50/50'}`}>
+                            <div className="flex items-start gap-6">
+                              <div className="flex flex-col items-center gap-2 shrink-0">
+                                <div className={`w-14 h-14 rounded-[1.2rem] flex items-center justify-center shadow-lg ${
+                                  !isPresent ? 'bg-slate-200 text-slate-400' : 
+                                  item.type === 'food' ? 'bg-orange-500 text-white' : 
+                                  item.type === 'hotel' ? 'bg-indigo-600 text-white' : 'bg-slate-900 text-white'
+                                }`}>
+                                  {item.type === 'food' ? <Utensils size={24}/> : item.type === 'hotel' ? <Hotel size={24}/> : <Camera size={24}/>}
                                 </div>
-                                {isPresent && (
-                                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                                    <button onClick={()=>setItineraryModal({mode:'edit', dayIdx:dIdx, itemIdx:iIdx, data:{...item}})} className="p-2 hover:bg-indigo-50 rounded-xl text-indigo-400"><Edit3 size={14}/></button>
-                                    <button onClick={()=>{const n = [...itinerary]; n[dIdx].items.splice(iIdx,1); setItinerary(n);}} className="p-2 hover:bg-rose-50 rounded-xl text-rose-400"><Trash2 size={14}/></button>
+                                <span className={`text-[11px] font-black tracking-tighter ${isPresent ? 'text-slate-500' : 'text-slate-300'}`}>{item.time}</span>
+                              </div>
+                              <div className="grow">
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <h4 className={`text-lg font-black tracking-tight ${isPresent ? 'text-slate-900' : 'text-slate-500'}`}>{item.title}</h4>
+                                    <p className={`text-[11px] mt-1.5 font-medium leading-relaxed ${isPresent ? 'text-slate-500' : 'text-slate-400'}`}>{item.desc}</p>
                                   </div>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-4 mt-5">
-                                <div className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
-                                  <MapPin size={10} /> {item.loc}
+                                  {isPresent && (
+                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                      <button onClick={()=>setItineraryModal({mode:'edit', dayIdx:dIdx, itemIdx:iIdx, data:{...item}})} className="p-2 hover:bg-indigo-50 rounded-xl text-indigo-400"><Edit3 size={14}/></button>
+                                      <button onClick={()=>{const n = [...itinerary]; n[dIdx].items.splice(iIdx,1); setItinerary(n);}} className="p-2 hover:bg-rose-50 rounded-xl text-rose-400"><Trash2 size={14}/></button>
+                                    </div>
+                                  )}
                                 </div>
-                                {!isPresent && <span className="text-[10px] font-black text-rose-400 flex items-center gap-1"><Info size={10}/>{status === 'not_arrived' ? '还未到泰国' : '已经返程'}</span>}
+                                <div className="flex items-center gap-4 mt-5">
+                                  <div className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
+                                    <MapPin size={10} /> {item.loc}
+                                  </div>
+                                  {!isPresent && <span className="text-[10px] font-black text-rose-400 flex items-center gap-1"><Info size={10}/>{status === 'not_arrived' ? '还未到泰国' : '已经返程'}</span>}
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="p-12 text-center text-slate-500">
+              <h3 className="text-xl font-black mb-4">加载中...</h3>
+              <p className="text-sm">请稍等，正在加载成员信息</p>
+            </div>
+          )
         ) : (
           /* 高精度协同全员视图 */
           <div className="bg-white rounded-[2.5rem] shadow-xl overflow-hidden border border-slate-100/60">
@@ -420,7 +442,10 @@ const App = () => {
                   </div>
                   {filteredMembers.map(m => (
                     <div key={m.id} className="h-32 flex flex-col items-center justify-center border-b border-slate-50 px-6 bg-white transition-colors">
-                      <div className={`w-12 h-12 rounded-[1.2rem] ${m.bg} text-white flex items-center justify-center text-sm font-black mb-2 shadow-lg shadow-${m.bg.split('-')[1]}-100`}>
+                      <div 
+                        className={`w-12 h-12 rounded-[1.2rem] ${m.bg} text-white flex items-center justify-center text-sm font-black mb-2`}
+                        style={{ boxShadow: `0 0 15px ${m.color}33` }} // 修复动态阴影
+                      >
                         {m.name.charAt(0)}
                       </div>
                       <span className="text-xs font-black text-slate-800">{m.name}</span>
@@ -450,7 +475,9 @@ const App = () => {
                             return (
                               <div key={member.id} className="h-32 border-b border-slate-50 p-3 group">
                                 {isPresent ? (
-                                  <div className={`h-full rounded-[1.8rem] p-4 flex flex-col justify-between transition-all duration-300 group-hover:scale-[1.05] ${member.bg} shadow-xl shadow-${member.bg.split('-')[1]}-100`}>
+                                  <div className={`h-full rounded-[1.8rem] p-4 flex flex-col justify-between transition-all duration-300 group-hover:scale-[1.05] ${member.bg} shadow-xl`}
+                                    style={{ boxShadow: `0 0 20px ${member.color}33` }} // 修复动态阴影
+                                  >
                                     <div className="relative z-10">
                                       <h5 className="text-[10px] font-black text-white truncate border-b border-white/20 pb-1.5 mb-2 leading-none">{item.title}</h5>
                                       <p className="text-[9px] text-white/80 leading-tight line-clamp-2 font-medium">{item.desc}</p>
