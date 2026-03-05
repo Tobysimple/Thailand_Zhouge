@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>React 单文件部署</title>
+  <!-- 引入 React 和 ReactDOM 的 CDN（无需 npm 安装） -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+</head>
+<body>
+  <!-- React 挂载节点 -->
+  <div id="root"></div>
+
+  <!-- 你的 React 单文件代码（用 babel 兼容 JSX，CDN 引入） -->
+  <script src="https://unpkg.com/@babel/standalone@7.23.9/babel.min.js"></script>
+  <script type="text/babel">
+    // 👇 替换成你的 React 代码
+import React, { useState, useMemo } from 'react';
+import { 
+  Plane, 
+  MapPin, 
+  Clock, 
+  Users, 
+  Info, 
+  Calendar, 
+  Camera, 
+  Utensils, 
+  Waves,
+  ChevronRight,
+  Settings,
+  CheckCircle2,
+  AlertCircle
+} from 'lucide-react';
+
+const App = () => {
+  // 8位成员的初始数据
+  const initialMembers = [
+    { id: 1, name: "洲哥", arrival: "2026-04-17T10:00", flight: "TG615", status: "已确认" },
+    { id: 2, name: "霖哥", arrival: "2026-04-17T14:30", flight: "MU547", status: "已确认" },
+    { id: 3, name: "波哥", arrival: "2026-04-17T18:00", flight: "CZ3081", status: "待定" },
+    { id: 4, name: "然哥", arrival: "2026-04-17T22:00", flight: "FM855", status: "已确认" },
+    { id: 5, name: "阿露", arrival: "2026-04-18T01:30", flight: "HO1319", status: "已确认" },
+    { id: 6, name: "阿雁", arrival: "2026-04-18T09:00", flight: "TG663", status: "已确认" },
+    { id: 7, name: "虾米", arrival: "2026-04-18T12:00", flight: "CA979", status: "已确认" },
+    { id: 8, name: "妍", arrival: "2026-04-18T16:00", flight: "ZH9003", status: "已确认" },
+  ];
+
+  const [activeMemberId, setActiveMemberId] = useState(1);
+  const activeMember = initialMembers.find(m => m.id === activeMemberId);
+
+  // 全程通用行程数据
+  const schedule = [
+    {
+      day: "D1",
+      date: "2026-04-17",
+      title: "初见曼谷 · 湄南河畔",
+      activities: [
+        { time: "10:00-18:00", title: "分批接机 & 酒店入住", location: "素万那普机场/阿玛瑞酒店", type: "transport", desc: "专车接机送往曼谷市中心酒店休息。" },
+        { time: "19:00-21:00", title: "欢迎晚宴", location: "Iconsiam 露台餐厅", type: "food", desc: "俯瞰湄南河夜景，品尝正宗泰式创意料理。" }
+      ]
+    },
+    {
+      day: "D2",
+      date: "2026-04-18",
+      title: "曼谷经典 · 艺术之光",
+      activities: [
+        { time: "09:00-12:00", title: "大皇宫 & 玉佛寺", location: "Grand Palace", type: "culture", desc: "感受泰王室的雄伟建筑与佛教文化精华。" },
+        { time: "14:00-16:00", title: "郑王寺 (黎明寺)", location: "Wat Arun", type: "culture", desc: "穿泰服拍照的最佳地点，感受精致的瓷器贴面。" },
+        { time: "18:00-20:00", title: "Jodd Fairs 夜市", location: "Rama IX", type: "food", desc: "网红火山排骨、水果西施，体验曼谷烟火气。" }
+      ]
+    },
+    {
+      day: "D3",
+      date: "2026-04-19",
+      title: "曼谷 → 芭提雅 · 跨城之旅",
+      activities: [
+        { time: "10:00", title: "包车前往芭提雅", location: "曼谷酒店", type: "transport", desc: "车程约2小时，中途经停休息站。" },
+        { time: "13:00-15:00", title: "真理圣殿", location: "Sanctuary of Truth", type: "culture", desc: "全木雕刻的宏伟建筑，震撼心灵的艺术品。" },
+        { time: "17:00-19:00", title: "芭提雅沙滩夕阳", location: "Pattaya Beach", type: "leisure", desc: "漫步沙滩，享受海风与日落美景。" }
+      ]
+    },
+    {
+      day: "D4",
+      date: "2026-04-20",
+      title: "出海格兰岛 · 碧海蓝天",
+      activities: [
+        { time: "09:00-16:00", title: "格兰岛一日游", location: "Koh Larn", type: "nature", desc: "浮潜、滑翔伞、香蕉船，享受清澈见底的海水。" },
+        { time: "19:30-21:00", title: "蒂芬妮人妖秀", location: "Tiffany's Show", type: "entertainment", desc: "泰国最负盛名的表演之一，视觉盛宴。" }
+      ]
+    },
+    {
+      day: "D5",
+      date: "2026-04-21",
+      title: "自然奇观 · 乐活时光",
+      activities: [
+        { time: "10:00-13:00", title: "东芭乐园", location: "Nong Nooch Garden", type: "nature", desc: "大型热带植物园与传统大象表演。" },
+        { time: "15:00-17:00", title: "四方水上市场", location: "Floating Market", type: "culture", desc: "电影《杜拉拉升职记》取景地，体验水上交易。" },
+        { time: "19:00", title: "离别派对", location: "芭提雅海景酒吧", type: "food", desc: "最后狂欢，交流旅行感想。" }
+      ]
+    },
+    {
+      day: "D6",
+      date: "2026-04-22",
+      title: "满载而归 · 送机返航",
+      activities: [
+        { time: "09:00-12:00", title: "王权免税店采购", location: "King Power", type: "shopping", desc: "最后的伴手礼扫货时间。" },
+        { time: "下午", title: "送往机场", location: "素万那普机场", type: "transport", desc: "根据航班时间提前3小时送达机场。" }
+      ]
+    }
+  ];
+
+  // 辅助函数：判断活动是否在该成员到达之后
+  const isActivityActive = (activityDate, activityTimeStr, memberArrivalStr) => {
+    const memberArrival = new Date(memberArrivalStr);
+    const activityStartTime = activityTimeStr.split('-')[0];
+    const activityDateTime = new Date(`${activityDate}T${activityStartTime.includes(':') ? activityStartTime : '00:00'}`);
+    return activityDateTime >= memberArrival;
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 pb-20">
+      {/* 顶部 Hero 区域 */}
+      <div className="relative h-64 bg-teal-600 overflow-hidden">
+        <div className="absolute inset-0 opacity-20">
+          <div className="absolute top-10 left-10 w-32 h-32 bg-white rounded-full blur-3xl"></div>
+          <div className="absolute bottom-10 right-10 w-48 h-48 bg-yellow-400 rounded-full blur-3xl"></div>
+        </div>
+        <div className="relative max-w-5xl mx-auto px-6 h-full flex flex-col justify-center text-white">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-medium">2026.04.17 - 04.22</span>
+            <span className="flex items-center gap-1 text-xs"><MapPin size={14} /> 曼谷 · 芭提雅</span>
+          </div>
+          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight">泰嗨皮 · 狂欢盛夏</h1>
+          <p className="mt-2 text-teal-100 max-w-md">8位伙伴，双城奇遇。这是属于我们的专属旅行档案。</p>
+        </div>
+      </div>
+
+      {/* 成员切换区域 */}
+      <div className="max-w-5xl mx-auto px-6 -mt-8 relative z-10">
+        <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 p-6">
+          <div className="flex items-center gap-2 mb-4 text-slate-500 text-sm font-medium">
+            <Users size={16} /> <span>选择成员查看专属行程：</span>
+          </div>
+          <div className="grid grid-cols-4 md:grid-cols-8 gap-3">
+            {initialMembers.map((member) => (
+              <button
+                key={member.id}
+                onClick={() => setActiveMemberId(member.id)}
+                className={`flex flex-col items-center gap-2 p-2 rounded-xl transition-all duration-300 ${
+                  activeMemberId === member.id 
+                    ? 'bg-teal-50 ring-2 ring-teal-500 scale-105' 
+                    : 'bg-white hover:bg-slate-50 border border-slate-100'
+                }`}
+              >
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${
+                  activeMemberId === member.id ? 'bg-teal-500 text-white' : 'bg-slate-200 text-slate-600'
+                }`}>
+                  {member.name.charAt(0)}
+                </div>
+                <span className={`text-xs font-semibold ${activeMemberId === member.id ? 'text-teal-700' : 'text-slate-600'}`}>
+                  {member.name}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-5xl mx-auto px-6 mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* 左侧：当前成员卡片 */}
+        <div className="lg:col-span-1 space-y-6">
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+            <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+              <Settings size={18} className="text-teal-500" /> 个人状态
+            </h3>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center py-2 border-b border-slate-50">
+                <span className="text-slate-400 text-sm">航班号</span>
+                <span className="font-mono font-bold text-teal-600">{activeMember.flight}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-slate-50">
+                <span className="text-slate-400 text-sm">到达时间</span>
+                <span className="font-semibold text-slate-700">
+                  {new Date(activeMember.arrival).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-2">
+                <span className="text-slate-400 text-sm">行程状态</span>
+                <span className={`px-2 py-1 rounded text-xs font-bold ${
+                  activeMember.status === '已确认' ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600'
+                }`}>
+                  {activeMember.status}
+                </span>
+              </div>
+            </div>
+            
+            <div className="mt-6 p-4 bg-teal-50 rounded-xl border border-teal-100 flex items-start gap-3">
+              <Info size={20} className="text-teal-500 shrink-0 mt-0.5" />
+              <p className="text-xs text-teal-800 leading-relaxed">
+                <b>温馨提示：</b>泰铢当前汇率约为 1:5.1。请确保已提前开通国际漫游或准备好泰国 SIM 卡。
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-indigo-600 to-blue-700 rounded-2xl p-6 text-white shadow-lg">
+            <h3 className="font-bold mb-3 flex items-center gap-2"><Calendar size={18} /> 紧急联系</h3>
+            <p className="text-xs text-blue-100 mb-4 opacity-80 italic">如遇紧急情况请随时联系</p>
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between"><span>曼谷大使馆</span><span>02-245-0088</span></div>
+              <div className="flex justify-between"><span>领队微信</span><span>TripMaster_TH</span></div>
+              <div className="flex justify-between"><span>当地急救</span><span>1669</span></div>
+            </div>
+          </div>
+        </div>
+
+        {/* 右侧：时间轴行程 */}
+        <div className="lg:col-span-2 space-y-8">
+          {schedule.map((dayPlan, idx) => (
+            <div key={idx} className="relative">
+              {/* 日期标题 */}
+              <div className="flex items-center gap-4 mb-6">
+                <div className="bg-white w-14 h-14 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center shrink-0">
+                  <span className="text-teal-600 font-black text-xl leading-none">{dayPlan.day}</span>
+                  <span className="text-slate-400 text-[10px] mt-1 uppercase font-bold tracking-widest">April</span>
+                </div>
+                <div>
+                  <h2 className="text-xl font-extrabold text-slate-800">{dayPlan.title}</h2>
+                  <p className="text-slate-400 text-sm font-medium">{dayPlan.date}</p>
+                </div>
+              </div>
+
+              {/* 活动内容 */}
+              <div className="ml-7 border-l-2 border-slate-200 pl-8 space-y-6">
+                {dayPlan.activities.map((act, actIdx) => {
+                  const isActive = isActivityActive(dayPlan.date, act.time, activeMember.arrival);
+                  
+                  return (
+                    <div 
+                      key={actIdx} 
+                      className={`relative group transition-opacity duration-500 ${!isActive ? 'opacity-30' : 'opacity-100'}`}
+                    >
+                      {/* 时间轴圆点 */}
+                      <div className={`absolute -left-[41px] top-6 w-5 h-5 rounded-full border-4 border-slate-50 flex items-center justify-center ${
+                        !isActive ? 'bg-slate-300' : 'bg-teal-500 group-hover:scale-125 transition-transform'
+                      }`}>
+                        {!isActive && <AlertCircle size={10} className="text-white" />}
+                      </div>
+
+                      {/* 行程卡片 */}
+                      <div className={`p-5 rounded-2xl border transition-all ${
+                        !isActive 
+                          ? 'bg-slate-100 border-slate-200' 
+                          : 'bg-white border-white shadow-sm hover:shadow-md hover:border-teal-100'
+                      }`}>
+                        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${
+                              !isActive ? 'bg-slate-200 text-slate-500' : 'bg-teal-100 text-teal-600'
+                            }`}>
+                              {act.time}
+                            </span>
+                            <span className={`flex items-center gap-1 text-xs font-medium ${!isActive ? 'text-slate-400' : 'text-slate-400'}`}>
+                              <MapPin size={12} /> {act.location}
+                            </span>
+                          </div>
+                          {!isActive && (
+                            <span className="text-[10px] font-bold text-slate-400 italic">您尚未到达</span>
+                          )}
+                        </div>
+                        
+                        <div className="flex gap-4">
+                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
+                            !isActive ? 'bg-slate-200 text-slate-400' : 'bg-slate-100 text-teal-600'
+                          }`}>
+                            {act.type === 'transport' && <Plane size={24} />}
+                            {act.type === 'food' && <Utensils size={24} />}
+                            {act.type === 'culture' && <Camera size={24} />}
+                            {act.type === 'leisure' && <Waves size={24} />}
+                            {act.type === 'nature' && <MapPin size={24} />}
+                            {act.type === 'entertainment' && <Users size={24} />}
+                            {act.type === 'shopping' && <ChevronRight size={24} />}
+                          </div>
+                          <div>
+                            <h4 className={`font-bold mb-1 ${!isActive ? 'text-slate-500' : 'text-slate-800'}`}>
+                              {act.title}
+                            </h4>
+                            <p className={`text-sm leading-relaxed ${!isActive ? 'text-slate-400' : 'text-slate-500'}`}>
+                              {act.desc}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 底部导航或版本 */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white/80 backdrop-blur-lg border border-white/50 px-6 py-3 rounded-full shadow-2xl flex items-center gap-4 z-50">
+        <div className="flex -space-x-2">
+          {initialMembers.slice(0, 5).map(m => (
+            <div key={m.id} className="w-8 h-8 rounded-full border-2 border-white bg-slate-300 overflow-hidden flex items-center justify-center text-[10px] font-bold">
+              {m.name.charAt(0)}
+            </div>
+          ))}
+          <div className="w-8 h-8 rounded-full border-2 border-white bg-teal-500 text-white flex items-center justify-center text-[10px] font-bold">
+            +3
+          </div>
+        </div>
+        <div className="h-4 w-px bg-slate-200"></div>
+        <div className="text-xs font-bold text-slate-600">
+          泰国游玩小组 · 共 8 人
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default App;
+
+    // 渲染到页面
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
