@@ -18,7 +18,7 @@ import {
 const App = () => {
   // 8位成员的初始数据
   const initialMembers = [
-    { id: 1, name: "洲哥", arrival: "2026-04-17T10:00", flight: "TG615", status: "已确认" },
+       { id: 1, name: "洲哥", arrival: "2026-04-17T10:00", flight: "TG615", status: "已确认" },
         { id: 2, name: "然哥", arrival: "2026-04-17T14:30", flight: "MU547", status: "已确认" },
         { id: 3, name: "霖哥", arrival: "2026-04-17T18:00", flight: "CZ3081", status: "待定" },
         { id: 4, name: "波哥", arrival: "2026-04-17T22:00", flight: "FM855", status: "已确认" },
